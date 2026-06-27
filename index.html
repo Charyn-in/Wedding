@@ -4,11 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
     <title>婚宴席位查询</title>
-    <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
     </script>
     <style>
-        /* ----- 样式（与之前完全相同）----- */
         * {
             margin: 0;
             padding: 0;
@@ -308,10 +306,14 @@
     <script>
         (function() {
             // ============================================================
-            // 1. 初始化 Supabase（替换成你的真实值）
+            // 配置 Supabase（请替换成你的真实值）
             // ============================================================
-            const SUPABASE_URL = 'https://rzmkfaumkfjnqsvvublf.supabase.co';     // ← 替换
-            const SUPABASE_ANON_KEY = 'sb_publishable_2jqTvVMIqD3Drmjl5AUeKQ_QohbbHzA';  // ← 替换
+            const SUPABASE_URL = 'https://你的项目ID.supabase.co';     // ← 替换
+            const SUPABASE_ANON_KEY = 'sb_publishable_xxxxx';          // ← 替换
+
+            console.log('🔧 Supabase 配置检查:');
+            console.log('  URL:', SUPABASE_URL);
+            console.log('  KEY 长度:', SUPABASE_ANON_KEY ? SUPABASE_ANON_KEY.length : '空');
 
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -323,9 +325,11 @@
             const modalClose = document.getElementById('modalClose');
             const toast = document.getElementById('toast');
 
-            // ---------- 查询逻辑（从 Supabase 读取） ----------
+            // ---------- 查询逻辑（带详细调试日志） ----------
             async function queryGuest() {
                 const input = guestNameInput.value.trim();
+                console.log('🔍 [1] 获取输入:', input);
+
                 if (!input) {
                     showToast('请输入您的姓名');
                     return;
@@ -334,37 +338,48 @@
                 queryBtn.textContent = '查询中...';
                 queryBtn.disabled = true;
 
+                console.log('🔍 [2] 准备查询 Supabase...');
+
                 try {
-                    // 查询 guest 表中 name 等于输入值的记录
+                    console.log('🔍 [3] 执行 supabase.from("guest").select()...');
                     const { data, error } = await supabase
                         .from('guest')
-                        .select('name, table')
+                        .select('name, table_number')
                         .eq('name', input);
 
+                    console.log('🔍 [4] 收到响应');
+                    console.log('  📦 data:', data);
+                    console.log('  ⚠️ error:', error);
+
                     if (error) {
-                        console.error('查询错误:', error);
-                        showToast('❌ 查询失败，请稍后重试');
+                        console.error('❌ 查询错误:', error);
+                        showToast('❌ 查询失败: ' + error.message);
                         return;
                     }
 
                     if (data && data.length > 0) {
                         const guest = data[0];
-                        showResult(guest.name, guest.table);
+                        console.log('✅ 找到宾客:', guest);
+                        showResult(guest.name, guest.table_number);
                     } else {
+                        console.log('❌ 未找到宾客:', input);
                         showNotFound(input);
                     }
                 } catch (err) {
-                    console.error('异常:', err);
-                    showToast('❌ 查询失败，请检查网络');
+                    console.error('💥 异常:', err);
+                    showToast('❌ 查询异常: ' + err.message);
                 } finally {
                     queryBtn.textContent = '点击查询';
                     queryBtn.disabled = false;
                 }
             }
 
+            // ============================================================
+            // 显示结果（文案已按用户要求修改）
+            // ============================================================
             function showResult(name, table) {
                 modalContent.innerHTML = `
-                            <div class="result-label">您的晚宴桌位号</div>
+                            <div class="result-label">您的晚宴桌位号是</div>
                             <div class="result-name">${escapeHtml(name)}</div>
                             <div class="result-table">第${escapeHtml(table)}桌</div>
                             <div class="result-hint">感谢赴约，共享喜宴</div>
@@ -399,7 +414,7 @@
                 clearTimeout(toastTimer);
                 toastTimer = setTimeout(function() {
                     toast.classList.remove('show');
-                }, 2500);
+                }, 4000);
             }
 
             // ---------- 事件绑定 ----------
@@ -408,12 +423,19 @@
                 if (e.target === modalOverlay) closeModal();
             });
 
-            queryBtn.addEventListener('click', queryGuest);
-            guestNameInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') queryGuest();
+            queryBtn.addEventListener('click', function() {
+                console.log('🖱️ 查询按钮被点击');
+                queryGuest();
             });
 
-            console.log('✅ 婚宴查询已启动（Supabase 云端数据）');
+            guestNameInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    console.log('⌨️ 回车键触发了查询');
+                    queryGuest();
+                }
+            });
+
+            console.log('✅ 婚宴查询已启动（Supabase 云端数据，带调试日志）');
         })();
     </script>
 
