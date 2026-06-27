@@ -323,7 +323,7 @@
 
     <div class="container" id="app">
 
-        <!-- 顶部图片（仅显示，无上传功能） -->
+        <!-- 顶部图片 -->
         <div class="top-image" id="topImage">
             <div class="default-hint">
                 <span>💐</span>
@@ -358,7 +358,7 @@
 
     <script>
         (function() {
-            // ---------- 数据存储（与后台共用 localStorage） ----------
+            // ---------- 数据存储 ----------
             const STORAGE_KEY = 'weddingGuestData';
             const COVER_KEY = 'weddingCoverImage';
             let guestData = [];
@@ -373,18 +373,21 @@
                 } else {
                     guestData = [];
                 }
+                console.log('📊 加载数据，共', guestData.length, '人');
             }
 
             // ---------- 加载封面图 ----------
             function loadCover() {
                 const stored = localStorage.getItem(COVER_KEY);
                 const topImage = document.getElementById('topImage');
-                if (stored) {
+                if (stored && stored.length > 100) {
                     topImage.style.backgroundImage = 'url(' + stored + ')';
                     topImage.classList.add('has-image');
+                    console.log('🖼️ 封面图已加载');
                 } else {
                     topImage.style.backgroundImage = '';
                     topImage.classList.remove('has-image');
+                    console.log('🖼️ 无封面图');
                 }
             }
 
@@ -471,7 +474,6 @@
             loadCover();
 
             console.log('✅ 婚宴查询已启动');
-            console.log('📊 当前数据条数:', guestData.length);
         })();
     </script>
 
