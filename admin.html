@@ -4,9 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
     <title>管理员后台 · 婚宴席位查询</title>
+    <!-- 引入 SheetJS 用于解析 Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js">
+    <!-- 引入 Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
     </script>
     <style>
         * {
@@ -26,13 +28,12 @@
         }
 
         .admin-container {
-            max-width: 480px;
+            max-width: 560px;
             width: 100%;
             background: #ffffff;
             border-radius: 28px;
             box-shadow: 0 12px 40px rgba(180, 60, 50, 0.12);
             padding: 28px 24px 32px;
-            position: relative;
         }
 
         .admin-header {
@@ -87,58 +88,47 @@
             border-radius: 12px;
         }
 
-        /* 封面图上传 */
-        .cover-upload-area {
-            width: 100%;
-            height: 0;
-            padding-bottom: 35%;
-            position: relative;
-            background-color: #e8d5ce;
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
-            border-radius: 12px;
-            overflow: hidden;
-            cursor: pointer;
+        /* 文件上传区域 */
+        .upload-area {
             border: 2px dashed #dcc8c0;
-            transition: border-color 0.2s;
+            border-radius: 12px;
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s, background 0.3s;
+            background: #fdf9f7;
         }
 
-        .cover-upload-area .upload-hint {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #a67a6e;
-            font-size: 13px;
-            background: rgba(255, 248, 245, 0.7);
-            pointer-events: none;
-        }
-
-        .cover-upload-area .upload-hint span:first-child {
-            font-size: 28px;
-            margin-bottom: 4px;
-        }
-
-        .cover-upload-area.has-image .upload-hint {
-            display: none;
-        }
-
-        .cover-upload-area.has-image {
+        .upload-area:hover {
             border-color: #b85a4a;
-            border-style: solid;
+            background: #fcf3ef;
         }
 
-        #adminImageUpload {
+        .upload-area .icon {
+            font-size: 36px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .upload-area .text {
+            color: #8a5a4e;
+            font-size: 14px;
+        }
+
+        .upload-area .sub {
+            color: #b9a098;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        #fileInput {
             display: none;
         }
 
         .file-actions {
             display: flex;
             gap: 10px;
-            margin-top: 12px;
+            margin-top: 14px;
             flex-wrap: wrap;
         }
 
@@ -166,6 +156,12 @@
             box-shadow: 0 4px 12px rgba(180, 70, 50, 0.25);
         }
 
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .btn-secondary {
             background: #f0e4df;
             color: #6b3a2e;
@@ -191,50 +187,33 @@
             box-shadow: 0 4px 12px rgba(80, 130, 100, 0.25);
         }
 
-        /* 数据导入 */
-        .import-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+        .btn-danger {
+            background: #b85a4a;
+            color: #fff;
         }
 
-        .import-row .btn {
-            flex: 1;
-            min-width: 100px;
-        }
-
-        .import-status {
-            margin-top: 10px;
-            font-size: 13px;
-            color: #8a7a72;
-            padding: 8px 14px;
-            background: #f5edea;
-            border-radius: 20px;
-            display: none;
-        }
-
-        .import-status.show {
-            display: block;
-        }
-
-        /* 数据预览 */
-        .data-preview {
-            margin-top: 12px;
-            max-height: 140px;
+        /* 预览表格 */
+        .preview-box {
+            margin-top: 14px;
+            max-height: 200px;
             overflow-y: auto;
             background: #ffffff;
             border-radius: 10px;
-            padding: 6px 0;
             border: 1px solid #f0e4df;
+            display: none;
         }
 
-        .data-preview table {
+        .preview-box.show {
+            display: block;
+        }
+
+        .preview-box table {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
         }
 
-        .data-preview th {
+        .preview-box th {
             text-align: left;
             padding: 6px 14px;
             color: #8a5a4e;
@@ -245,107 +224,84 @@
             background: #fff;
         }
 
-        .data-preview td {
+        .preview-box td {
             padding: 5px 14px;
             color: #3d2a22;
             border-bottom: 1px solid #f5edea;
         }
 
-        .data-preview .empty-msg {
+        .preview-box .empty-msg {
             padding: 18px;
             text-align: center;
             color: #c4b0a8;
             font-size: 13px;
         }
 
-        /* 二维码区域 */
-        .qr-area {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 0 4px;
-        }
-
-        .qr-area .qr-row {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-            justify-content: center;
-            width: 100%;
-        }
-
-        .qr-area .qr-row .btn {
-            flex: 0 1 auto;
-            min-width: 120px;
-        }
-
-        .qr-code-box {
-            display: none;
-            background: #ffffff;
-            padding: 16px 16px 12px;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(180, 60, 50, 0.10);
-            border: 1px solid #f0e4df;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .qr-code-box.show {
-            display: flex;
-        }
-
-        .qr-code-box .qr-tip {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #b0887c;
-            letter-spacing: 1px;
-        }
-
-        .qr-code-box .qr-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .qr-code-box .qr-actions .btn {
-            font-size: 12px;
-            padding: 6px 18px;
-            min-width: auto;
-            flex: 0 1 auto;
-        }
-
-        /* 页面链接 */
-        .page-link-box {
-            background: #f5edea;
-            border-radius: 10px;
-            padding: 10px 16px;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .page-link-box .link-text {
+        /* 状态信息 */
+        .status-msg {
+            margin-top: 12px;
+            padding: 8px 14px;
+            border-radius: 20px;
             font-size: 13px;
+            display: none;
+            background: #f5edea;
             color: #6b3a2e;
-            word-break: break-all;
-            flex: 1;
-            min-width: 100px;
         }
 
-        .page-link-box .btn {
-            flex: 0 1 auto;
-            padding: 6px 16px;
-            font-size: 12px;
-            min-width: auto;
+        .status-msg.show {
+            display: block;
         }
 
-        /* Toast */
+        .status-msg.success {
+            background: #e6f0ea;
+            color: #2d6a4f;
+        }
+
+        .status-msg.error {
+            background: #f5e6e3;
+            color: #a34738;
+        }
+
+        /* 数据列表 */
+        .data-list {
+            margin-top: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #ffffff;
+            border-radius: 10px;
+            border: 1px solid #f0e4df;
+        }
+
+        .data-list table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .data-list th {
+            text-align: left;
+            padding: 6px 14px;
+            color: #8a5a4e;
+            font-weight: 500;
+            border-bottom: 1px solid #f0e4df;
+            position: sticky;
+            top: 0;
+            background: #fff;
+        }
+
+        .data-list td {
+            padding: 5px 14px;
+            color: #3d2a22;
+            border-bottom: 1px solid #f5edea;
+        }
+
+        .data-list .empty-msg {
+            padding: 18px;
+            text-align: center;
+            color: #c4b0a8;
+            font-size: 13px;
+        }
+
         .toast {
             position: fixed;
             bottom: 30px;
@@ -373,26 +329,9 @@
             .admin-container {
                 padding: 20px 16px 24px;
             }
-            .admin-header h1 {
-                font-size: 18px;
-            }
             .btn {
                 font-size: 13px;
                 padding: 8px 16px;
-            }
-            .qr-area .qr-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .qr-area .qr-row .btn {
-                flex: 1;
-            }
-            .page-link-box {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .page-link-box .btn {
-                flex: 1;
             }
         }
     </style>
@@ -403,215 +342,179 @@
         <!-- 头部 -->
         <div class="admin-header">
             <h1>🔐 管理后台</h1>
-            <span class="badge">婚宴席位查询</span>
+            <span class="badge">数据导入</span>
         </div>
 
-        <!-- 1. 封面图管理 -->
-        <div class="admin-section">
-            <div class="section-title">🖼️ 封面图</div>
-            <div class="cover-upload-area" id="adminCoverArea">
-                <div class="upload-hint">
-                    <span>🖼️</span>
-                    <span>点击上传封面图</span>
-                </div>
-            </div>
-            <input type="file" id="adminImageUpload" accept="image/*" />
-            <div class="file-actions">
-                <button class="btn btn-secondary" id="adminRemoveCover">移除图片</button>
-                <button class="btn btn-outline" id="adminResetCover">恢复默认</button>
-            </div>
-        </div>
-
-        <!-- 2. 数据导入 -->
+        <!-- 数据导入 -->
         <div class="admin-section">
             <div class="section-title">
-                📋 宾客数据
-                <span class="count" id="dataCount">0 人</span>
+                📋 导入宾客名单
+                <span class="count" id="totalCount">0 人</span>
             </div>
-            <div class="import-row">
-                <button class="btn btn-primary" id="adminImportBtn">📤 导入 Excel</button>
-                <button class="btn btn-outline" id="adminClearData">清空数据</button>
-            </div>
-            <input type="file" id="adminExcelUpload" accept=".xlsx,.xls" />
-            <div class="import-status" id="importStatus"></div>
 
-            <!-- 数据预览 -->
-            <div class="data-preview" id="dataPreview">
-                <div class="empty-msg">暂无宾客数据，请导入 Excel</div>
+            <!-- 上传区域 -->
+            <div class="upload-area" id="uploadArea">
+                <span class="icon">📁</span>
+                <div class="text">点击选择 Excel / CSV 文件</div>
+                <div class="sub">支持 .xlsx, .xls, .csv</div>
             </div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+
+            <!-- 预览表格 -->
+            <div class="preview-box" id="previewBox">
+                <table>
+                    <thead><tr><th>姓名</th><th>桌号</th></tr></thead>
+                    <tbody id="previewBody"></tbody>
+                </table>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="file-actions">
+                <button class="btn btn-primary" id="importBtn" disabled>⬆️ 导入到数据库</button>
+                <button class="btn btn-outline" id="clearBtn">🗑️ 清空预览</button>
+            </div>
+
+            <!-- 状态信息 -->
+            <div class="status-msg" id="statusMsg"></div>
         </div>
 
-        <!-- 3. 二维码 -->
+        <!-- 当前数据列表 -->
         <div class="admin-section">
-            <div class="section-title">📱 二维码</div>
-            <div class="qr-area">
-                <div class="qr-row">
-                    <button class="btn btn-primary" id="adminGenerateQr">生成二维码</button>
-                    <button class="btn btn-secondary" id="adminHideQr">隐藏二维码</button>
-                </div>
-                <div class="qr-code-box" id="adminQrBox">
-                    <div id="adminQrCode"></div>
-                    <div class="qr-tip">长按或截图保存二维码</div>
-                    <div class="qr-actions">
-                        <button class="btn btn-secondary" id="adminDownloadQr">💾 下载二维码</button>
-                    </div>
-                </div>
+            <div class="section-title">
+                📊 当前数据
+                <span class="count" id="currentCount">0 人</span>
             </div>
-        </div>
-
-        <!-- 4. 页面链接 -->
-        <div class="admin-section" style="margin-bottom:0;">
-            <div class="section-title">🔗 页面链接</div>
-            <div class="page-link-box">
-                <span class="link-text" id="pageLinkDisplay">请先部署页面到线上</span>
-                <button class="btn btn-secondary" id="adminCopyLink">📋 复制链接</button>
+            <div class="data-list" id="dataList">
+                <div class="empty-msg">暂无数据，请导入</div>
+            </div>
+            <div style="margin-top:10px;">
+                <button class="btn btn-danger" id="clearAllBtn" style="flex:none; width:100%;">🗑️ 清空所有数据</button>
             </div>
         </div>
     </div>
 
-    <!-- Toast -->
-    <div class="toast" id="adminToast"></div>
+    <div class="toast" id="toast"></div>
 
     <script>
         (function() {
             // ============================================================
-            //  数据管理（与宾客页共用 localStorage 键名）
+            // 配置 Supabase
             // ============================================================
-            const STORAGE_KEY = 'weddingGuestData';
-            const COVER_KEY = 'weddingCoverImage';
+            const SUPABASE_URL = 'https://rzmkfaumkfjnqsvvublf.supabase.co';     // ← 替换
+            const SUPABASE_ANON_KEY = 'sb_publishable_2jqTvVMIqD3Drmjl5AUeKQ_QohbbHzA';          // ← 替换
 
-            let guestData = [];
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-            function loadData() {
-                const stored = localStorage.getItem(STORAGE_KEY);
-                if (stored) {
-                    try {
-                        guestData = JSON.parse(stored);
-                        if (!Array.isArray(guestData)) guestData = [];
-                    } catch (e) { guestData = []; }
-                } else {
-                    guestData = [];
+            // ============================================================
+            // DOM 引用
+            // ============================================================
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const previewBox = document.getElementById('previewBox');
+            const previewBody = document.getElementById('previewBody');
+            const importBtn = document.getElementById('importBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            const statusMsg = document.getElementById('statusMsg');
+            const totalCount = document.getElementById('totalCount');
+            const currentCount = document.getElementById('currentCount');
+            const dataList = document.getElementById('dataList');
+            const toast = document.getElementById('toast');
+
+            let parsedData = []; // 当前预览的数据 [{name, table_number}]
+
+            // ============================================================
+            // 工具函数
+            // ============================================================
+            function showToast(msg) {
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(toast._timer);
+                toast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+
+            function showStatus(msg, type = '') {
+                statusMsg.textContent = msg;
+                statusMsg.className = 'status-msg show ' + type;
+            }
+
+            function hideStatus() {
+                statusMsg.className = 'status-msg';
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // ============================================================
+            // 加载当前数据（从 Supabase）
+            // ============================================================
+            async function loadCurrentData() {
+                try {
+                    const { data, error } = await supabase
+                        .from('guest')
+                        .select('name, table_number')
+                        .order('id', { ascending: true });
+
+                    if (error) {
+                        console.error('加载数据失败:', error);
+                        return;
+                    }
+
+                    currentCount.textContent = (data && data.length) || 0 + ' 人';
+                    totalCount.textContent = (data && data.length) || 0 + ' 人';
+
+                    if (!data || data.length === 0) {
+                        dataList.innerHTML = '<div class="empty-msg">暂无数据，请导入</div>';
+                        return;
+                    }
+
+                    let html = `<table>
+                                <thead><tr><th>姓名</th><th>桌号</th></tr></thead>
+                                <tbody>`;
+                    data.forEach(item => {
+                        html += `<tr><td>${escapeHtml(item.name)}</td><td>第${escapeHtml(item.table_number)}桌</td></tr>`;
+                    });
+                    html += `</tbody></table>`;
+                    dataList.innerHTML = html;
+                } catch (err) {
+                    console.error('加载异常:', err);
                 }
-                updateDataUI();
-            }
-
-            function saveData() {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(guestData));
-                updateDataUI();
-            }
-
-            function updateDataUI() {
-                document.getElementById('dataCount').textContent = guestData.length + ' 人';
-                renderPreview();
-            }
-
-            // ---------- 封面图 ----------
-            function loadCover() {
-                const stored = localStorage.getItem(COVER_KEY);
-                const area = document.getElementById('adminCoverArea');
-                if (stored) {
-                    area.style.backgroundImage = 'url(' + stored + ')';
-                    area.classList.add('has-image');
-                } else {
-                    area.style.backgroundImage = '';
-                    area.classList.remove('has-image');
-                }
-            }
-
-            function saveCover(dataUrl) {
-                if (dataUrl) {
-                    localStorage.setItem(COVER_KEY, dataUrl);
-                } else {
-                    localStorage.removeItem(COVER_KEY);
-                }
-                loadCover();
             }
 
             // ============================================================
-            //  DOM 引用
+            // 文件上传 & 解析
             // ============================================================
-            const coverArea = document.getElementById('adminCoverArea');
-            const coverUpload = document.getElementById('adminImageUpload');
-            const removeCoverBtn = document.getElementById('adminRemoveCover');
-            const resetCoverBtn = document.getElementById('adminResetCover');
+            uploadArea.addEventListener('click', () => fileInput.click());
 
-            const importBtn = document.getElementById('adminImportBtn');
-            const excelUpload = document.getElementById('adminExcelUpload');
-            const clearDataBtn = document.getElementById('adminClearData');
-            const importStatus = document.getElementById('importStatus');
-
-            const generateQrBtn = document.getElementById('adminGenerateQr');
-            const hideQrBtn = document.getElementById('adminHideQr');
-            const qrBox = document.getElementById('adminQrBox');
-            const qrContainer = document.getElementById('adminQrCode');
-            const downloadQrBtn = document.getElementById('adminDownloadQr');
-
-            const pageLinkDisplay = document.getElementById('pageLinkDisplay');
-            const copyLinkBtn = document.getElementById('adminCopyLink');
-
-            const toast = document.getElementById('adminToast');
-
-            let qrInstance = null;
-            let currentQrDataUrl = null;
-
-            // ============================================================
-            //  封面图操作
-            // ============================================================
-            coverArea.addEventListener('click', function() {
-                coverUpload.click();
-            });
-
-            coverUpload.addEventListener('change', function(e) {
+            fileInput.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (!file) return;
-                if (!file.type.startsWith('image/')) {
-                    showToast('请选择图片文件');
-                    coverUpload.value = '';
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    const dataUrl = ev.target.result;
-                    saveCover(dataUrl);
-                    showToast('✅ 封面图已更新');
-                    coverUpload.value = '';
-                };
-                reader.onerror = function() {
-                    showToast('读取图片失败');
-                    coverUpload.value = '';
-                };
-                reader.readAsDataURL(file);
-            });
 
-            removeCoverBtn.addEventListener('click', function() {
-                saveCover(null);
-                showToast('已移除封面图');
-            });
-
-            resetCoverBtn.addEventListener('click', function() {
-                saveCover(null);
-                showToast('已恢复默认');
-            });
-
-            // ============================================================
-            //  数据导入
-            // ============================================================
-            importBtn.addEventListener('click', function() {
-                excelUpload.click();
-            });
-
-            excelUpload.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
+                // 重置
+                parsedData = [];
+                previewBody.innerHTML = '';
+                previewBox.classList.remove('show');
+                importBtn.disabled = true;
+                hideStatus();
 
                 const reader = new FileReader();
                 reader.onload = function(ev) {
                     try {
-                        const data = new Uint8Array(ev.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
+                        let workbook;
+                        const data = ev.target.result;
+                        if (file.name.endsWith('.csv')) {
+                            // CSV 用 SheetJS 解析
+                            workbook = XLSX.read(data, { type: 'array' });
+                        } else {
+                            workbook = XLSX.read(data, { type: 'array' });
+                        }
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                         const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
+                        // 自动识别列
                         let nameCol = 0,
                             tableCol = 1;
                         let startRow = 0;
@@ -638,205 +541,137 @@
                             const name = String(row[nameCol] || '').trim();
                             const table = String(row[tableCol] || '').trim();
                             if (name && table) {
-                                newData.push({ name, table });
+                                newData.push({ name, table_number: table });
                             }
                         }
 
                         if (newData.length === 0) {
-                            showToast('⚠️ 未解析到有效数据，请检查列名');
+                            showStatus('⚠️ 未解析到有效数据，请检查列名（姓名、桌号）', 'error');
                             return;
                         }
 
-                        // 追加还是覆盖？这里使用覆盖（更符合直觉）
-                        guestData = newData;
-                        saveData();
-                        showToast('✅ 成功导入 ' + guestData.length + ' 位宾客');
-                        importStatus.textContent = '✅ 已导入 ' + guestData.length + ' 位宾客';
-                        importStatus.classList.add('show');
-                        setTimeout(() => {
-                            importStatus.classList.remove('show');
-                        }, 4000);
+                        parsedData = newData;
+                        // 渲染预览
+                        let html = '';
+                        const show = parsedData.slice(0, 20);
+                        show.forEach(item => {
+                            html +=
+                                `<tr><td>${escapeHtml(item.name)}</td><td>第${escapeHtml(item.table_number)}桌</td></tr>`;
+                        });
+                        if (parsedData.length > 20) {
+                            html +=
+                                `<tr><td colspan="2" style="text-align:center;color:#b0887c;font-size:12px;">... 共 ${parsedData.length} 位宾客</td></tr>`;
+                        }
+                        previewBody.innerHTML = html;
+                        previewBox.classList.add('show');
+                        importBtn.disabled = false;
+                        showStatus(`✅ 解析成功，共 ${parsedData.length} 位宾客，点击“导入到数据库”`, 'success');
                     } catch (err) {
-                        showToast('文件解析失败，请确认格式正确');
-                        console.error(err);
+                        console.error('解析失败:', err);
+                        showStatus('❌ 文件解析失败，请确认格式正确', 'error');
                     }
                 };
                 reader.readAsArrayBuffer(file);
-                excelUpload.value = '';
+                // 重置 input
+                fileInput.value = '';
             });
 
-            clearDataBtn.addEventListener('click', function() {
-                if (guestData.length === 0) {
-                    showToast('暂无数据需要清空');
+            // ============================================================
+            // 导入到 Supabase
+            // ============================================================
+            importBtn.addEventListener('click', async function() {
+                if (parsedData.length === 0) {
+                    showStatus('⚠️ 没有可导入的数据', 'error');
                     return;
                 }
-                if (confirm('确定要清空所有宾客数据吗？')) {
-                    guestData = [];
-                    saveData();
-                    showToast('已清空所有数据');
-                }
-            });
 
-            // ============================================================
-            //  数据预览渲染
-            // ============================================================
-            function renderPreview() {
-                const container = document.getElementById('dataPreview');
-                if (guestData.length === 0) {
-                    container.innerHTML = '<div class="empty-msg">暂无宾客数据，请导入 Excel</div>';
-                    return;
-                }
-                let html = `<table>
-                            <thead><tr><th>姓名</th><th>桌号</th></tr></thead>
-                            <tbody>`;
-                const show = guestData.slice(0, 20);
-                show.forEach(item => {
-                    html += `<tr><td>${escapeHtml(item.name)}</td><td>第${escapeHtml(item.table)}桌</td></tr>`;
-                });
-                if (guestData.length > 20) {
-                    html +=
-                        `<tr><td colspan="2" style="text-align:center;color:#b0887c;font-size:12px;">... 共 ${guestData.length} 位宾客</td></tr>`;
-                }
-                html += `</tbody></table>`;
-                container.innerHTML = html;
-            }
+                // 确认
+                if (!confirm(`确定要导入 ${parsedData.length} 位宾客吗？`)) return;
 
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
+                importBtn.disabled = true;
+                importBtn.textContent = '导入中...';
+                showStatus('⏳ 正在导入...', '');
 
-            // ============================================================
-            //  二维码
-            // ============================================================
-            generateQrBtn.addEventListener('click', function() {
-                const url = window.location.href;
-                if (url.startsWith('file://')) {
-                    showToast('⚠️ 请先将页面部署到线上再生成二维码');
-                    return;
-                }
-                // 移除查询参数中的无关内容，保持链接干净
-                const cleanUrl = url.split('?')[0];
-                qrContainer.innerHTML = '';
-                qrInstance = new QRCode(qrContainer, {
-                    text: cleanUrl,
-                    width: 180,
-                    height: 180,
-                    colorDark: '#6b3a2e',
-                    colorLight: '#ffffff',
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-                // 获取生成的 canvas 数据
-                setTimeout(() => {
-                    const canvas = qrContainer.querySelector('canvas');
-                    if (canvas) {
-                        currentQrDataUrl = canvas.toDataURL('image/png');
-                    }
-                }, 100);
-                qrBox.classList.add('show');
-                showToast('✅ 二维码已生成');
-            });
+                let successCount = 0;
+                let failCount = 0;
 
-            hideQrBtn.addEventListener('click', function() {
-                qrBox.classList.remove('show');
-                currentQrDataUrl = null;
-            });
+                try {
+                    // 批量插入（逐条或批量，这里使用批量 upsert 可能更高效，但 Supabase 的 insert 支持数组）
+                    const { data, error } = await supabase
+                        .from('guest')
+                        .insert(parsedData.map(item => ({
+                            name: item.name,
+                            table_number: item.table_number
+                        })));
 
-            // 下载二维码
-            downloadQrBtn.addEventListener('click', function() {
-                if (!currentQrDataUrl) {
-                    // 尝试从 canvas 重新获取
-                    const canvas = qrContainer.querySelector('canvas');
-                    if (canvas) {
-                        currentQrDataUrl = canvas.toDataURL('image/png');
-                    } else {
-                        showToast('请先生成二维码');
+                    if (error) {
+                        console.error('导入错误:', error);
+                        showStatus(`❌ 导入失败: ${error.message}`, 'error');
+                        importBtn.disabled = false;
+                        importBtn.textContent = '⬆️ 导入到数据库';
                         return;
                     }
+
+                    // 成功
+                    successCount = parsedData.length;
+                    showStatus(`✅ 成功导入 ${successCount} 位宾客`, 'success');
+                    // 清空预览
+                    parsedData = [];
+                    previewBody.innerHTML = '';
+                    previewBox.classList.remove('show');
+                    importBtn.disabled = true;
+                    // 刷新数据列表
+                    await loadCurrentData();
+                } catch (err) {
+                    console.error('导入异常:', err);
+                    showStatus(`❌ 导入异常: ${err.message}`, 'error');
+                } finally {
+                    importBtn.disabled = false;
+                    importBtn.textContent = '⬆️ 导入到数据库';
                 }
-                const link = document.createElement('a');
-                link.download = '婚宴二维码.png';
-                link.href = currentQrDataUrl;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                showToast('✅ 二维码已下载');
             });
 
             // ============================================================
-            //  页面链接
+            // 清空预览
             // ============================================================
-            function updatePageLink() {
-                const url = window.location.href;
-                if (url.startsWith('file://')) {
-                    pageLinkDisplay.textContent = '⚠️ 当前为本地文件，请部署到线上后再使用';
-                } else {
-                    pageLinkDisplay.textContent = url.split('?')[0];
-                }
-            }
-            updatePageLink();
-
-            copyLinkBtn.addEventListener('click', function() {
-                const url = pageLinkDisplay.textContent;
-                if (url.startsWith('⚠️') || url === '请先部署页面到线上') {
-                    showToast('请先部署页面到线上');
-                    return;
-                }
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(url).then(() => {
-                        showToast('✅ 链接已复制');
-                    }).catch(() => {
-                        fallbackCopy(url);
-                    });
-                } else {
-                    fallbackCopy(url);
-                }
+            clearBtn.addEventListener('click', function() {
+                parsedData = [];
+                previewBody.innerHTML = '';
+                previewBox.classList.remove('show');
+                importBtn.disabled = true;
+                hideStatus();
             });
 
-            function fallbackCopy(text) {
-                const input = document.createElement('input');
-                input.value = text;
-                document.body.appendChild(input);
-                input.select();
+            // ============================================================
+            // 清空所有数据（危险操作）
+            // ============================================================
+            clearAllBtn.addEventListener('click', async function() {
+                if (!confirm('⚠️ 确定要清空所有宾客数据吗？此操作不可恢复！')) return;
+                if (!confirm('再次确认：清空所有数据？')) return;
+
                 try {
-                    document.execCommand('copy');
-                    showToast('✅ 链接已复制');
-                } catch (e) {
-                    showToast('复制失败，请手动复制');
+                    const { error } = await supabase
+                        .from('guest')
+                        .delete()
+                        .neq('id', 0); // 删除所有
+
+                    if (error) {
+                        showStatus(`❌ 清空失败: ${error.message}`, 'error');
+                        return;
+                    }
+                    showStatus('✅ 所有数据已清空', 'success');
+                    await loadCurrentData();
+                } catch (err) {
+                    showStatus(`❌ 清空异常: ${err.message}`, 'error');
                 }
-                document.body.removeChild(input);
-            }
+            });
 
             // ============================================================
-            //  Toast
+            // 初始化
             // ============================================================
-            let toastTimer = null;
-
-            function showToast(msg) {
-                toast.textContent = msg;
-                toast.classList.add('show');
-                clearTimeout(toastTimer);
-                toastTimer = setTimeout(function() {
-                    toast.classList.remove('show');
-                }, 2800);
-            }
-
-            // ============================================================
-            //  初始化
-            // ============================================================
-            loadData();
-            loadCover();
-
-            // 如果是通过 file:// 打开的，提示
-            if (window.location.href.startsWith('file://')) {
-                showToast('💡 部署到线上后，二维码和链接功能才可用');
-            }
-
-            console.log('🔐 管理后台已启动');
-            console.log('📊 当前数据条数:', guestData.length);
+            loadCurrentData();
+            console.log('🔐 管理后台已启动 (Supabase)');
         })();
     </script>
-
 </body>
 </html>
