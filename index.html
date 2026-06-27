@@ -37,13 +37,15 @@
             background-blend-mode: normal;
         }
 
-        /* ----- 顶部图片区 - 占 2/5 ----- */
+        /* ----- 顶部图片区 - 占 2/5，图片已写死 ----- */
         .top-image {
             width: 100%;
             height: 0;
             padding-bottom: 40%;
             position: relative;
             background-color: #e8d5ce;
+            /* 关键：直接使用您 GitHub 仓库里的图片直链 */
+            background-image: url('https://raw.githubusercontent.com/Charyn-in/Wedding/main/images/%E5%B0%81%E9%9D%A2%E5%9B%BE(2).jpg');
             background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
@@ -51,26 +53,8 @@
             border-bottom: 2px solid #f0d9d0;
         }
 
+        /* 因为图片已写死，所以不再需要默认提示文字，完全由图片覆盖 */
         .top-image .default-hint {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #a67a6e;
-            font-size: 13px;
-            letter-spacing: 1px;
-            background: rgba(255, 240, 235, 0.5);
-            pointer-events: none;
-        }
-
-        .top-image .default-hint span:first-child {
-            font-size: 28px;
-            margin-bottom: 4px;
-        }
-
-        .top-image.has-image .default-hint {
             display: none;
         }
 
@@ -323,12 +307,9 @@
 
     <div class="container" id="app">
 
-        <!-- 顶部图片 -->
+        <!-- 顶部图片：背景图已在 CSS 中写死，无需其他操作 -->
         <div class="top-image" id="topImage">
-            <div class="default-hint">
-                <span>💐</span>
-                <span>婚礼封面</span>
-            </div>
+            <!-- 占位元素已不需要，保留空 div 即可 -->
         </div>
 
         <div class="main-content">
@@ -360,7 +341,6 @@
         (function() {
             // ---------- 数据存储 ----------
             const STORAGE_KEY = 'weddingGuestData';
-            const COVER_KEY = 'weddingCoverImage';
             let guestData = [];
 
             function loadData() {
@@ -374,21 +354,6 @@
                     guestData = [];
                 }
                 console.log('📊 加载数据，共', guestData.length, '人');
-            }
-
-            // ---------- 加载封面图 ----------
-            function loadCover() {
-                const stored = localStorage.getItem(COVER_KEY);
-                const topImage = document.getElementById('topImage');
-                if (stored && stored.length > 100) {
-                    topImage.style.backgroundImage = 'url(' + stored + ')';
-                    topImage.classList.add('has-image');
-                    console.log('🖼️ 封面图已加载');
-                } else {
-                    topImage.style.backgroundImage = '';
-                    topImage.classList.remove('has-image');
-                    console.log('🖼️ 无封面图');
-                }
             }
 
             // ---------- DOM 元素 ----------
@@ -471,9 +436,8 @@
 
             // ---------- 初始化 ----------
             loadData();
-            loadCover();
 
-            console.log('✅ 婚宴查询已启动');
+            console.log('✅ 婚宴查询已启动，封面图已写死');
         })();
     </script>
 
