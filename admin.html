@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>管理员后台 · 婚宴席位查询</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+            background-color: #f5edea;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .admin-container {
+            max-width: 480px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 12px 40px rgba(180, 60, 50, 0.12);
+            padding: 28px 24px 32px;
+            position: relative;
+        }
+
+        .admin-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f0e0da;
+        }
+
+        .admin-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #6b3a2e;
+            letter-spacing: 1px;
+        }
+
+        .admin-header .badge {
+            font-size: 12px;
+            background: #f0e0da;
+            color: #8a5a4e;
+            padding: 4px 14px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+        }
+
+        .admin-section {
+            background: #fdf9f7;
+            border-radius: 16px;
+            padding: 18px 18px 20px;
+            margin-bottom: 18px;
+            border: 1px solid #f0e4df;
+        }
+
+        .admin-section .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #6b3a2e;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .admin-section .section-title .count {
+            font-weight: 400;
+            font-size: 13px;
+            color: #b0887c;
+            background: #f0e4df;
+            padding: 0 12px;
+            border-radius: 12px;
+        }
+
+        /* 封面图上传 */
+        .cover-upload-area {
+            width: 100%;
+            height: 0;
+            padding-bottom: 35%;
+            position: relative;
+            background-color: #e8d5ce;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px dashed #dcc8c0;
+            transition: border-color 0.2s;
+        }
+
+        .cover-upload-area .upload-hint {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #a67a6e;
+            font-size: 13px;
+            background: rgba(255, 248, 245, 0.7);
+            pointer-events: none;
+        }
+
+        .cover-upload-area .upload-hint span:first-child {
+            font-size: 28px;
+            margin-bottom: 4px;
+        }
+
+        .cover-upload-area.has-image .upload-hint {
+            display: none;
+        }
+
+        .cover-upload-area.has-image {
+            border-color: #b85a4a;
+            border-style: solid;
+        }
+
+        #adminImageUpload {
+            display: none;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 22px;
+            border: none;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #b85a4a, #a34738);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(180, 70, 50, 0.25);
+        }
+
+        .btn-secondary {
+            background: #f0e4df;
+            color: #6b3a2e;
+        }
+
+        .btn-secondary:hover {
+            background: #e8d8d0;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid #dcc8c0;
+            color: #8a5a4e;
+        }
+
+        .btn-outline:hover {
+            background: #f5edea;
+        }
+
+        .btn-success {
+            background: #5a8a6e;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(80, 130, 100, 0.25);
+        }
+
+        /* 数据导入 */
+        .import-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .import-row .btn {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .import-status {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #8a7a72;
+            padding: 8px 14px;
+            background: #f5edea;
+            border-radius: 20px;
+            display: none;
+        }
+
+        .import-status.show {
+            display: block;
+        }
+
+        /* 数据预览 */
+        .data-preview {
+            margin-top: 12px;
+            max-height: 140px;
+            overflow-y: auto;
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 6px 0;
+            border: 1px solid #f0e4df;
+        }
+
+        .data-preview table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .data-preview th {
+            text-align: left;
+            padding: 6px 14px;
+            color: #8a5a4e;
+            font-weight: 500;
+            border-bottom: 1px solid #f0e4df;
+            position: sticky;
+            top: 0;
+            background: #fff;
+        }
+
+        .data-preview td {
+            padding: 5px 14px;
+            color: #3d2a22;
+            border-bottom: 1px solid #f5edea;
+        }
+
+        .data-preview .empty-msg {
+            padding: 18px;
+            text-align: center;
+            color: #c4b0a8;
+            font-size: 13px;
+        }
+
+        /* 二维码区域 */
+        .qr-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0 4px;
+        }
+
+        .qr-area .qr-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .qr-area .qr-row .btn {
+            flex: 0 1 auto;
+            min-width: 120px;
+        }
+
+        .qr-code-box {
+            display: none;
+            background: #ffffff;
+            padding: 16px 16px 12px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(180, 60, 50, 0.10);
+            border: 1px solid #f0e4df;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .qr-code-box.show {
+            display: flex;
+        }
+
+        .qr-code-box .qr-tip {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #b0887c;
+            letter-spacing: 1px;
+        }
+
+        .qr-code-box .qr-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .qr-code-box .qr-actions .btn {
+            font-size: 12px;
+            padding: 6px 18px;
+            min-width: auto;
+            flex: 0 1 auto;
+        }
+
+        /* 页面链接 */
+        .page-link-box {
+            background: #f5edea;
+            border-radius: 10px;
+            padding: 10px 16px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .page-link-box .link-text {
+            font-size: 13px;
+            color: #6b3a2e;
+            word-break: break-all;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .page-link-box .btn {
+            flex: 0 1 auto;
+            padding: 6px 16px;
+            font-size: 12px;
+            min-width: auto;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #3d2a22;
+            color: #f5e3dc;
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-size: 14px;
+            letter-spacing: 1px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 420px) {
+            .admin-container {
+                padding: 20px 16px 24px;
+            }
+            .admin-header h1 {
+                font-size: 18px;
+            }
+            .btn {
+                font-size: 13px;
+                padding: 8px 16px;
+            }
+            .qr-area .qr-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .qr-area .qr-row .btn {
+                flex: 1;
+            }
+            .page-link-box {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .page-link-box .btn {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <!-- 头部 -->
+        <div class="admin-header">
+            <h1>🔐 管理后台</h1>
+            <span class="badge">婚宴席位查询</span>
+        </div>
+
+        <!-- 1. 封面图管理 -->
+        <div class="admin-section">
+            <div class="section-title">🖼️ 封面图</div>
+            <div class="cover-upload-area" id="adminCoverArea">
+                <div class="upload-hint">
+                    <span>🖼️</span>
+                    <span>点击上传封面图</span>
+                </div>
+            </div>
+            <input type="file" id="adminImageUpload" accept="image/*" />
+            <div class="file-actions">
+                <button class="btn btn-secondary" id="adminRemoveCover">移除图片</button>
+                <button class="btn btn-outline" id="adminResetCover">恢复默认</button>
+            </div>
+        </div>
+
+        <!-- 2. 数据导入 -->
+        <div class="admin-section">
+            <div class="section-title">
+                📋 宾客数据
+                <span class="count" id="dataCount">0 人</span>
+            </div>
+            <div class="import-row">
+                <button class="btn btn-primary" id="adminImportBtn">📤 导入 Excel</button>
+                <button class="btn btn-outline" id="adminClearData">清空数据</button>
+            </div>
+            <input type="file" id="adminExcelUpload" accept=".xlsx,.xls" />
+            <div class="import-status" id="importStatus"></div>
+
+            <!-- 数据预览 -->
+            <div class="data-preview" id="dataPreview">
+                <div class="empty-msg">暂无宾客数据，请导入 Excel</div>
+            </div>
+        </div>
+
+        <!-- 3. 二维码 -->
+        <div class="admin-section">
+            <div class="section-title">📱 二维码</div>
+            <div class="qr-area">
+                <div class="qr-row">
+                    <button class="btn btn-primary" id="adminGenerateQr">生成二维码</button>
+                    <button class="btn btn-secondary" id="adminHideQr">隐藏二维码</button>
+                </div>
+                <div class="qr-code-box" id="adminQrBox">
+                    <div id="adminQrCode"></div>
+                    <div class="qr-tip">长按或截图保存二维码</div>
+                    <div class="qr-actions">
+                        <button class="btn btn-secondary" id="adminDownloadQr">💾 下载二维码</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 页面链接 -->
+        <div class="admin-section" style="margin-bottom:0;">
+            <div class="section-title">🔗 页面链接</div>
+            <div class="page-link-box">
+                <span class="link-text" id="pageLinkDisplay">请先部署页面到线上</span>
+                <button class="btn btn-secondary" id="adminCopyLink">📋 复制链接</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="adminToast"></div>
+
+    <script>
+        (function() {
+            // ============================================================
+            //  数据管理（与宾客页共用 localStorage 键名）
+            // ============================================================
+            const STORAGE_KEY = 'weddingGuestData';
+            const COVER_KEY = 'weddingCoverImage';
+
+            let guestData = [];
+
+            function loadData() {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    try {
+                        guestData = JSON.parse(stored);
+                        if (!Array.isArray(guestData)) guestData = [];
+                    } catch (e) { guestData = []; }
+                } else {
+                    guestData = [];
+                }
+                updateDataUI();
+            }
+
+            function saveData() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(guestData));
+                updateDataUI();
+            }
+
+            function updateDataUI() {
+                document.getElementById('dataCount').textContent = guestData.length + ' 人';
+                renderPreview();
+            }
+
+            // ---------- 封面图 ----------
+            function loadCover() {
+                const stored = localStorage.getItem(COVER_KEY);
+                const area = document.getElementById('adminCoverArea');
+                if (stored) {
+                    area.style.backgroundImage = 'url(' + stored + ')';
+                    area.classList.add('has-image');
+                } else {
+                    area.style.backgroundImage = '';
+                    area.classList.remove('has-image');
+                }
+            }
+
+            function saveCover(dataUrl) {
+                if (dataUrl) {
+                    localStorage.setItem(COVER_KEY, dataUrl);
+                } else {
+                    localStorage.removeItem(COVER_KEY);
+                }
+                loadCover();
+            }
+
+            // ============================================================
+            //  DOM 引用
+            // ============================================================
+            const coverArea = document.getElementById('adminCoverArea');
+            const coverUpload = document.getElementById('adminImageUpload');
+            const removeCoverBtn = document.getElementById('adminRemoveCover');
+            const resetCoverBtn = document.getElementById('adminResetCover');
+
+            const importBtn = document.getElementById('adminImportBtn');
+            const excelUpload = document.getElementById('adminExcelUpload');
+            const clearDataBtn = document.getElementById('adminClearData');
+            const importStatus = document.getElementById('importStatus');
+
+            const generateQrBtn = document.getElementById('adminGenerateQr');
+            const hideQrBtn = document.getElementById('adminHideQr');
+            const qrBox = document.getElementById('adminQrBox');
+            const qrContainer = document.getElementById('adminQrCode');
+            const downloadQrBtn = document.getElementById('adminDownloadQr');
+
+            const pageLinkDisplay = document.getElementById('pageLinkDisplay');
+            const copyLinkBtn = document.getElementById('adminCopyLink');
+
+            const toast = document.getElementById('adminToast');
+
+            let qrInstance = null;
+            let currentQrDataUrl = null;
+
+            // ============================================================
+            //  封面图操作
+            // ============================================================
+            coverArea.addEventListener('click', function() {
+                coverUpload.click();
+            });
+
+            coverUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (!file.type.startsWith('image/')) {
+                    showToast('请选择图片文件');
+                    coverUpload.value = '';
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const dataUrl = ev.target.result;
+                    saveCover(dataUrl);
+                    showToast('✅ 封面图已更新');
+                    coverUpload.value = '';
+                };
+                reader.onerror = function() {
+                    showToast('读取图片失败');
+                    coverUpload.value = '';
+                };
+                reader.readAsDataURL(file);
+            });
+
+            removeCoverBtn.addEventListener('click', function() {
+                saveCover(null);
+                showToast('已移除封面图');
+            });
+
+            resetCoverBtn.addEventListener('click', function() {
+                saveCover(null);
+                showToast('已恢复默认');
+            });
+
+            // ============================================================
+            //  数据导入
+            // ============================================================
+            importBtn.addEventListener('click', function() {
+                excelUpload.click();
+            });
+
+            excelUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    try {
+                        const data = new Uint8Array(ev.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                        let nameCol = 0,
+                            tableCol = 1;
+                        let startRow = 0;
+                        if (json.length > 0) {
+                            const header = json[0];
+                            for (let i = 0; i < header.length; i++) {
+                                const cell = String(header[i] || '').trim();
+                                if (cell.includes('姓名') || cell.includes('名字') || cell.includes('宾客')) {
+                                    nameCol = i;
+                                }
+                                if (cell.includes('桌') || cell.includes('座位') || cell.includes('号')) {
+                                    tableCol = i;
+                                }
+                            }
+                            if (header.some(h => h && (String(h).includes('姓名') || String(h).includes('桌')))) {
+                                startRow = 1;
+                            }
+                        }
+
+                        const newData = [];
+                        for (let r = startRow; r < json.length; r++) {
+                            const row = json[r];
+                            if (!row || row.length === 0) continue;
+                            const name = String(row[nameCol] || '').trim();
+                            const table = String(row[tableCol] || '').trim();
+                            if (name && table) {
+                                newData.push({ name, table });
+                            }
+                        }
+
+                        if (newData.length === 0) {
+                            showToast('⚠️ 未解析到有效数据，请检查列名');
+                            return;
+                        }
+
+                        // 追加还是覆盖？这里使用覆盖（更符合直觉）
+                        guestData = newData;
+                        saveData();
+                        showToast('✅ 成功导入 ' + guestData.length + ' 位宾客');
+                        importStatus.textContent = '✅ 已导入 ' + guestData.length + ' 位宾客';
+                        importStatus.classList.add('show');
+                        setTimeout(() => {
+                            importStatus.classList.remove('show');
+                        }, 4000);
+                    } catch (err) {
+                        showToast('文件解析失败，请确认格式正确');
+                        console.error(err);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                excelUpload.value = '';
+            });
+
+            clearDataBtn.addEventListener('click', function() {
+                if (guestData.length === 0) {
+                    showToast('暂无数据需要清空');
+                    return;
+                }
+                if (confirm('确定要清空所有宾客数据吗？')) {
+                    guestData = [];
+                    saveData();
+                    showToast('已清空所有数据');
+                }
+            });
+
+            // ============================================================
+            //  数据预览渲染
+            // ============================================================
+            function renderPreview() {
+                const container = document.getElementById('dataPreview');
+                if (guestData.length === 0) {
+                    container.innerHTML = '<div class="empty-msg">暂无宾客数据，请导入 Excel</div>';
+                    return;
+                }
+                let html = `<table>
+                            <thead><tr><th>姓名</th><th>桌号</th></tr></thead>
+                            <tbody>`;
+                const show = guestData.slice(0, 20);
+                show.forEach(item => {
+                    html += `<tr><td>${escapeHtml(item.name)}</td><td>第${escapeHtml(item.table)}桌</td></tr>`;
+                });
+                if (guestData.length > 20) {
+                    html +=
+                        `<tr><td colspan="2" style="text-align:center;color:#b0887c;font-size:12px;">... 共 ${guestData.length} 位宾客</td></tr>`;
+                }
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // ============================================================
+            //  二维码
+            // ============================================================
+            generateQrBtn.addEventListener('click', function() {
+                const url = window.location.href;
+                if (url.startsWith('file://')) {
+                    showToast('⚠️ 请先将页面部署到线上再生成二维码');
+                    return;
+                }
+                // 移除查询参数中的无关内容，保持链接干净
+                const cleanUrl = url.split('?')[0];
+                qrContainer.innerHTML = '';
+                qrInstance = new QRCode(qrContainer, {
+                    text: cleanUrl,
+                    width: 180,
+                    height: 180,
+                    colorDark: '#6b3a2e',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                // 获取生成的 canvas 数据
+                setTimeout(() => {
+                    const canvas = qrContainer.querySelector('canvas');
+                    if (canvas) {
+                        currentQrDataUrl = canvas.toDataURL('image/png');
+                    }
+                }, 100);
+                qrBox.classList.add('show');
+                showToast('✅ 二维码已生成');
+            });
+
+            hideQrBtn.addEventListener('click', function() {
+                qrBox.classList.remove('show');
+                currentQrDataUrl = null;
+            });
+
+            // 下载二维码
+            downloadQrBtn.addEventListener('click', function() {
+                if (!currentQrDataUrl) {
+                    // 尝试从 canvas 重新获取
+                    const canvas = qrContainer.querySelector('canvas');
+                    if (canvas) {
+                        currentQrDataUrl = canvas.toDataURL('image/png');
+                    } else {
+                        showToast('请先生成二维码');
+                        return;
+                    }
+                }
+                const link = document.createElement('a');
+                link.download = '婚宴二维码.png';
+                link.href = currentQrDataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast('✅ 二维码已下载');
+            });
+
+            // ============================================================
+            //  页面链接
+            // ============================================================
+            function updatePageLink() {
+                const url = window.location.href;
+                if (url.startsWith('file://')) {
+                    pageLinkDisplay.textContent = '⚠️ 当前为本地文件，请部署到线上后再使用';
+                } else {
+                    pageLinkDisplay.textContent = url.split('?')[0];
+                }
+            }
+            updatePageLink();
+
+            copyLinkBtn.addEventListener('click', function() {
+                const url = pageLinkDisplay.textContent;
+                if (url.startsWith('⚠️') || url === '请先部署页面到线上') {
+                    showToast('请先部署页面到线上');
+                    return;
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(() => {
+                        showToast('✅ 链接已复制');
+                    }).catch(() => {
+                        fallbackCopy(url);
+                    });
+                } else {
+                    fallbackCopy(url);
+                }
+            });
+
+            function fallbackCopy(text) {
+                const input = document.createElement('input');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('✅ 链接已复制');
+                } catch (e) {
+                    showToast('复制失败，请手动复制');
+                }
+                document.body.removeChild(input);
+            }
+
+            // ============================================================
+            //  Toast
+            // ============================================================
+            let toastTimer = null;
+
+            function showToast(msg) {
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(function() {
+                    toast.classList.remove('show');
+                }, 2800);
+            }
+
+            // ============================================================
+            //  初始化
+            // ============================================================
+            loadData();
+            loadCover();
+
+            // 如果是通过 file:// 打开的，提示
+            if (window.location.href.startsWith('file://')) {
+                showToast('💡 部署到线上后，二维码和链接功能才可用');
+            }
+
+            console.log('🔐 管理后台已启动');
+            console.log('📊 当前数据条数:', guestData.length);
+        })();
+    </script>
+
+</body>
+</html>
