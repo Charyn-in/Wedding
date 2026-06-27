@@ -4,13 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
     <title>婚宴席位查询</title>
+    <!-- 引入 Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
     <style>
+        /* ----- 样式（与之前完全相同）----- */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
         body {
             font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
             background-color: #f9f0ec;
@@ -20,7 +23,6 @@
             align-items: center;
             padding: 12px;
         }
-
         .container {
             max-width: 420px;
             width: 100%;
@@ -36,15 +38,12 @@
                 linear-gradient(135deg, #fdf8f6 0%, #fef0ea 100%);
             background-blend-mode: normal;
         }
-
-        /* ----- 顶部图片区 - 占 2/5，图片已写死 ----- */
         .top-image {
             width: 100%;
             height: 0;
             padding-bottom: 40%;
             position: relative;
             background-color: #e8d5ce;
-            /* 关键：直接使用您 GitHub 仓库里的图片直链 */
             background-image: url('https://raw.githubusercontent.com/Charyn-in/Wedding/main/images/%E5%B0%81%E9%9D%A2%E5%9B%BE(2).jpg');
             background-size: contain;
             background-position: center;
@@ -52,18 +51,10 @@
             overflow: hidden;
             border-bottom: 2px solid #f0d9d0;
         }
-
-        /* 因为图片已写死，所以不再需要默认提示文字，完全由图片覆盖 */
-        .top-image .default-hint {
-            display: none;
-        }
-
-        /* ----- 内容区 ----- */
         .main-content {
             padding: 22px 24px 28px;
             background: transparent;
         }
-
         .wedding-title {
             text-align: center;
             font-size: 22px;
@@ -73,13 +64,11 @@
             margin-bottom: 24px;
             line-height: 1.4;
         }
-
         .search-form {
             display: flex;
             flex-direction: column;
             gap: 16px;
         }
-
         .input-row {
             display: flex;
             align-items: center;
@@ -89,7 +78,6 @@
             border: 1px solid #f0d9d0;
             box-shadow: inset 0 2px 4px rgba(180, 80, 60, 0.04);
         }
-
         .input-row label {
             font-size: 16px;
             color: #6b3a2e;
@@ -98,7 +86,6 @@
             letter-spacing: 1px;
             margin-right: 8px;
         }
-
         .input-row input {
             flex: 1;
             border: none;
@@ -109,13 +96,11 @@
             color: #3d2a22;
             min-width: 0;
         }
-
         .input-row input::placeholder {
             color: #c4a89e;
             font-weight: 300;
             font-size: 15px;
         }
-
         .btn-query {
             width: 100%;
             padding: 16px 0;
@@ -131,12 +116,14 @@
             transition: all 0.2s;
             margin-top: 4px;
         }
-
         .btn-query:active {
             transform: scale(0.97);
             box-shadow: 0 3px 8px rgba(180, 70, 50, 0.25);
         }
-
+        .btn-query:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
         .footer-welcome {
             text-align: center;
             margin-top: 28px;
@@ -147,8 +134,6 @@
             border-top: 1px solid #f0dad2;
             padding-top: 20px;
         }
-
-        /* ----- 弹窗 ----- */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -161,11 +146,9 @@
             padding: 24px;
             animation: fadeIn 0.25s ease;
         }
-
         .modal-overlay.active {
             display: flex;
         }
-
         .modal-box {
             background: #ffffff;
             border-radius: 32px;
@@ -177,7 +160,6 @@
             position: relative;
             animation: slideUp 0.3s ease;
         }
-
         .modal-box .close-btn {
             position: absolute;
             top: 14px;
@@ -190,11 +172,9 @@
             border: none;
             padding: 4px;
         }
-
         .modal-box .close-btn:active {
             color: #6b3a2e;
         }
-
         .modal-box .result-label {
             font-size: 18px;
             color: #6b3a2e;
@@ -202,14 +182,12 @@
             letter-spacing: 2px;
             margin-bottom: 8px;
         }
-
         .modal-box .result-name {
             font-size: 22px;
             color: #3d2a22;
             font-weight: 600;
             margin: 6px 0 12px;
         }
-
         .modal-box .result-table {
             font-size: 48px;
             font-weight: 700;
@@ -221,19 +199,16 @@
             border-radius: 60px;
             display: inline-block;
         }
-
         .modal-box .result-hint {
             font-size: 14px;
             color: #a4877c;
             margin-top: 12px;
         }
-
         .modal-box .not-found {
             font-size: 18px;
             color: #9f7a6e;
             padding: 16px 0;
         }
-
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -252,7 +227,6 @@
                 opacity: 1;
             }
         }
-
         .toast {
             position: fixed;
             bottom: 30px;
@@ -271,11 +245,9 @@
             pointer-events: none;
             white-space: nowrap;
         }
-
         .toast.show {
             opacity: 1;
         }
-
         @media (max-width: 420px) {
             .main-content {
                 padding: 18px 16px 22px;
@@ -306,11 +278,7 @@
 <body>
 
     <div class="container" id="app">
-
-        <!-- 顶部图片：背景图已在 CSS 中写死，无需其他操作 -->
-        <div class="top-image" id="topImage">
-            <!-- 占位元素已不需要，保留空 div 即可 -->
-        </div>
+        <div class="top-image" id="topImage"></div>
 
         <div class="main-content">
             <div class="wedding-title">许晓婷&常砾婚礼席位查询</div>
@@ -339,22 +307,13 @@
 
     <script>
         (function() {
-            // ---------- 数据存储 ----------
-            const STORAGE_KEY = 'weddingGuestData';
-            let guestData = [];
+            // ============================================================
+            // 1. 初始化 Supabase（替换成你的真实值）
+            // ============================================================
+            const SUPABASE_URL = 'https://rzmkfaumkfjnqsvvublf.supabase.co';     // ← 替换
+            const SUPABASE_ANON_KEY = 'sb_publishable_2jqTvVMIqD3Drmjl5AUeKQ_QohbbHzA';  // ← 替换
 
-            function loadData() {
-                const stored = localStorage.getItem(STORAGE_KEY);
-                if (stored) {
-                    try {
-                        guestData = JSON.parse(stored);
-                        if (!Array.isArray(guestData)) guestData = [];
-                    } catch (e) { guestData = []; }
-                } else {
-                    guestData = [];
-                }
-                console.log('📊 加载数据，共', guestData.length, '人');
-            }
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
             // ---------- DOM 元素 ----------
             const guestNameInput = document.getElementById('guestName');
@@ -364,22 +323,42 @@
             const modalClose = document.getElementById('modalClose');
             const toast = document.getElementById('toast');
 
-            // ---------- 查询逻辑 ----------
-            function queryGuest() {
+            // ---------- 查询逻辑（从 Supabase 读取） ----------
+            async function queryGuest() {
                 const input = guestNameInput.value.trim();
                 if (!input) {
                     showToast('请输入您的姓名');
                     return;
                 }
 
-                // 每次查询前重新加载数据（以防后台更新了数据）
-                loadData();
+                queryBtn.textContent = '查询中...';
+                queryBtn.disabled = true;
 
-                const matched = guestData.find(item => item.name === input);
-                if (matched) {
-                    showResult(input, matched.table);
-                } else {
-                    showNotFound(input);
+                try {
+                    // 查询 guest 表中 name 等于输入值的记录
+                    const { data, error } = await supabase
+                        .from('guest')
+                        .select('name, table')
+                        .eq('name', input);
+
+                    if (error) {
+                        console.error('查询错误:', error);
+                        showToast('❌ 查询失败，请稍后重试');
+                        return;
+                    }
+
+                    if (data && data.length > 0) {
+                        const guest = data[0];
+                        showResult(guest.name, guest.table);
+                    } else {
+                        showNotFound(input);
+                    }
+                } catch (err) {
+                    console.error('异常:', err);
+                    showToast('❌ 查询失败，请检查网络');
+                } finally {
+                    queryBtn.textContent = '点击查询';
+                    queryBtn.disabled = false;
                 }
             }
 
@@ -434,10 +413,7 @@
                 if (e.key === 'Enter') queryGuest();
             });
 
-            // ---------- 初始化 ----------
-            loadData();
-
-            console.log('✅ 婚宴查询已启动，封面图已写死');
+            console.log('✅ 婚宴查询已启动（Supabase 云端数据）');
         })();
     </script>
 
